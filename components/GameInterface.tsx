@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Scene } from '../types';
+import { Scene, Character } from '../types';
 
 interface GameInterfaceProps {
   scene: Scene;
@@ -8,17 +8,43 @@ interface GameInterfaceProps {
   isLoading: boolean;
   onSaveGame: () => void;
   isSaving: boolean;
+  character: Character | null;
 }
 
-export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, isLoading, onSaveGame, isSaving }) => {
+export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, isLoading, onSaveGame, isSaving, character }) => {
   const [customAction, setCustomAction] = useState('');
+  const [displayedDescription, setDisplayedDescription] = useState('');
+  const [isTypingComplete, setIsTypingComplete] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Scroll to new scene
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [scene]);
+
+  // Typing animation for scene description
+  useEffect(() => {
+    if (!isLoading && scene.description) {
+      setDisplayedDescription(''); // Reset for new scene
+      setIsTypingComplete(false);
+      let i = 0;
+      const interval = setInterval(() => {
+        setDisplayedDescription((prev) => prev + scene.description[i]);
+        i++;
+        if (i === scene.description.length) {
+          clearInterval(interval);
+          setIsTypingComplete(true);
+        }
+      }, 30); // Adjust typing speed here
+
+      return () => clearInterval(interval);
+    } else if (isLoading) {
+      setDisplayedDescription(''); // Clear text when loading
+      setIsTypingComplete(false);
+    }
+  }, [scene.description, isLoading]);
 
   const handleSubmitCustom = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,19 +80,64 @@ export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, i
 
       {/* Narrative Column */}
       <div className="space-y-8 pb-12">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-4">
+            {character?.portraitImageUrl && (
+              <img 
+                src={character.portraitImageUrl} 
+                alt={`${character.name} portrait`} 
+                className="w-12 h-12 rounded-full object-cover border-2 border-amber-500"
+              />
+            )}
+            <p className="text-xl font-cinzel text-amber-400">
+              {character ? character.name : 'Adventurer'}
+            </p>
+          </div>
+          <button
+            onClick={onSaveGame}
+            disabled={isLoading || isSaving}
+            className="px-6 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-slate-300 font-cinzel text-sm rounded-full transition-all flex items-center gap-2"
+            aria-label="Save Game"
+            aria-live="polite"
+            aria-busy={isSaving}
+          >
+            {isSaving ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+            )}
+            Save Game
+          </button>
+        </div>
+
         <div ref={scrollRef} className="animate-in fade-in duration-1000">
-          <div className="prose prose-invert prose-lg max-w-none">
-            {scene.description.split('\n').map((para, i) => (
-              <p key={i} className="text-slate-200 leading-relaxed font-serif first-letter:text-4xl first-letter:font-cinzel first-letter:text-amber-500 first-letter:mr-2">
-                {para}
-              </p>
-            ))}
+          <div className="prose prose-invert max-w-none">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="w-12 h-12 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+              </div>
+            ) : (
+              displayedDescription.split('\n').map((para, i) => (
+                <p 
+                  key={i} 
+                  className="text-slate-200 text-base leading-relaxed font-serif 
+                             first-letter:text-6xl first-letter:font-cinzel first-letter:font-bold 
+                             first-letter:text-amber-500 first-letter:mr-2 
+                             first-letter:float-left first-letter:leading-none
+                             drop-shadow-lg text-shadow-glow" // Added text-shadow-glow
+                >
+                  {para}
+                </p>
+              ))
+            )}
           </div>
         </div>
 
         {scene.isEnding ? (
           <div className="bg-amber-900/20 border border-amber-500/50 p-8 rounded-2xl text-center space-y-4 animate-bounce-slow">
-            <h3 className="text-3xl font-cinzel text-amber-500">The End</h3>
+            <h3 className="3xl font-cinzel text-amber-500">The End</h3>
             <p className="text-slate-300">Your chronicle concludes here.</p>
             <button 
               onClick={() => window.location.reload()}
@@ -78,26 +149,6 @@ export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, i
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={onSaveGame}
-                disabled={isLoading || isSaving}
-                className="px-6 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-slate-300 font-cinzel text-sm rounded-full transition-all flex items-center gap-2"
-                aria-label="Save Game"
-                aria-live="polite"
-                aria-busy={isSaving}
-              >
-                {isSaving ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                )}
-                Save Game
-              </button>
-            </div>
-
             <div className="grid grid-cols-1 gap-3">
               <p className="text-xs font-cinzel text-amber-500/50 tracking-[0.2em] mb-2">PROPOSED ACTIONS</p>
               {scene.choices.map((choice, i) => (
