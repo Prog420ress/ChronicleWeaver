@@ -6,9 +6,11 @@ interface GameInterfaceProps {
   scene: Scene;
   onChoice: (choice: string) => void;
   isLoading: boolean;
+  onSaveGame: () => void;
+  isSaving: boolean;
 }
 
-export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, isLoading }) => {
+export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, isLoading, onSaveGame, isSaving }) => {
   const [customAction, setCustomAction] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -69,12 +71,33 @@ export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, i
             <button 
               onClick={() => window.location.reload()}
               className="px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white font-cinzel rounded-full transition-all"
+              aria-label="Begin a new legend"
             >
               Begin a New Legend
             </button>
           </div>
         ) : (
           <div className="space-y-6">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={onSaveGame}
+                disabled={isLoading || isSaving}
+                className="px-6 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:text-slate-600 text-slate-300 font-cinzel text-sm rounded-full transition-all flex items-center gap-2"
+                aria-label="Save Game"
+                aria-live="polite"
+                aria-busy={isSaving}
+              >
+                {isSaving ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                )}
+                Save Game
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 gap-3">
               <p className="text-xs font-cinzel text-amber-500/50 tracking-[0.2em] mb-2">PROPOSED ACTIONS</p>
               {scene.choices.map((choice, i) => (
@@ -83,6 +106,9 @@ export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, i
                   disabled={isLoading}
                   onClick={() => onChoice(choice)}
                   className="group relative flex items-center text-left p-4 bg-slate-900/50 hover:bg-amber-900/20 border border-slate-800 hover:border-amber-500/50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden"
+                  aria-label={`Choose action ${i + 1}: ${choice}`}
+                  aria-live="polite"
+                  aria-busy={isLoading}
                 >
                   <span className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 group-hover:bg-amber-600 text-xs font-bold transition-colors mr-4">
                     {i + 1}
@@ -111,11 +137,15 @@ export const GameInterface: React.FC<GameInterfaceProps> = ({ scene, onChoice, i
                 className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none transition-all disabled:opacity-50"
                 value={customAction}
                 onChange={(e) => setCustomAction(e.target.value)}
+                aria-label="Type your own action"
               />
               <button
                 type="submit"
                 disabled={isLoading || !customAction.trim()}
                 className="bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 p-3 rounded-xl transition-all shadow-lg shadow-amber-900/20"
+                aria-label="Submit custom action"
+                aria-live="polite"
+                aria-busy={isLoading}
               >
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />

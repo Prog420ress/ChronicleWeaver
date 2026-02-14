@@ -1,10 +1,12 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { StoryInput } from './components/StoryInput';
 import { GameInterface } from './components/GameInterface';
 import { GameState, Scene } from './types';
 import { generateNextScene } from './services/geminiService';
+
+const LOCAL_STORAGE_KEY = 'chronicleWeaverSaveGame';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -13,6 +15,71 @@ const App: React.FC = () => {
     currentScene: null,
     status: 'IDLE',
   });
+  const [hasSavedGame, setHasSavedGame] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Check for saved game on component mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (savedData) {
+      setHasSavedGame(true);
+    }
+  }, []);
+
+  const saveGame = useCallback(() => {
+    if (!gameState.currentScene) {
+      alert("No game in progress to save!");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const saveObject = {
+        originalStory: gameState.originalStory,
+        history: gameState.history,
+        currentScene: gameState.currentScene,
+      };
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(saveObject));
+      console.log('Game saved!');
+      alert('Game Saved Successfully!');
+    } catch (error) {
+      console.error('Failed to save game:', error);
+      alert('Failed to save game. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [gameState]);
+
+  const loadGame = useCallback(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedData) {
+        const loadedState = JSON.parse(savedData);
+        setGameState({
+          originalStory: loadedState.originalStory,
+          history: loadedState.history,
+          currentScene: loadedState.currentScene,
+          status: 'PLAYING', // Set status to playing after loading
+        });
+        setHasSavedGame(true); // Keep true as game is loaded
+        alert('Game Loaded Successfully!');
+      } else {
+        alert('No saved game found to load.');
+        setHasSavedGame(false); // Ensure false if no data was found
+      }
+    } catch (error) {
+      console.error('Failed to load game:', error);
+      alert('Failed to load game. Save data might be corrupted. Starting a new game.');
+      localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear potentially bad save
+      setHasSavedGame(false);
+      // Optionally reset gameState to IDLE or a clean starting state
+      setGameState({
+        originalStory: '',
+        history: [],
+        currentScene: null,
+        status: 'IDLE',
+      });
+    }
+  }, []);
 
   const handleStartGame = useCallback(async (story: string) => {
     setGameState(prev => ({ ...prev, originalStory: story, status: 'STARTING' }));
@@ -67,6 +134,8 @@ const App: React.FC = () => {
         <StoryInput 
           onStart={handleStartGame} 
           isLoading={gameState.status === 'STARTING'} 
+          onLoadGame={loadGame}
+          hasSavedGame={hasSavedGame}
         />
       )}
 
@@ -82,6 +151,8 @@ const App: React.FC = () => {
           scene={gameState.currentScene} 
           onChoice={handleNextTurn} 
           isLoading={gameState.status === 'LOADING_NEXT'}
+          onSaveGame={saveGame}
+          isSaving={isSaving}
         />
       )}
     </Layout>
